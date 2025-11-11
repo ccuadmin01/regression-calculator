@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Regression Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for textareas */
+        textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white w-full max-w-2xl p-6 md:p-8 shadow-xl rounded-2xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-slate-800 mb-4">
+            Correlation & Regression Calculator
+        </h1>
+        <p class="text-center text-slate-600 mb-6">
+            Enter your X and Y values below, separated by commas, spaces, or new lines.
+        </p>
+
+        <!-- Data Input Section -->
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+            <div class="flex-1">
+                <label for="x-values" class="block text-sm font-medium text-slate-700 mb-2">
+                    X Values
+                </label>
+                <textarea id="x-values" rows="8" class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 1, 2, 3, 4, 5"></textarea>
+            </div>
+            <div class="flex-1">
+                <label for="y-values" class="block text-sm font-medium text-slate-700 mb-2">
+                    Y Values
+                </label>
+                <textarea id="y-values" rows="8" class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 2, 4.1, 5.9, 8, 10.2"></textarea>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <button id="calculate-btn" class="flex-1 bg-blue-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out">
+                Calculate
+            </button>
+            <button id="clear-btn" class="flex-1 bg-slate-500 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-slate-600 transition duration-300 ease-in-out">
+                Clear
+            </button>
+        </div>
+
+        <!-- Message/Error Display -->
+        <div id="message-box" class="hidden p-3 rounded-lg text-center font-medium mb-6"></div>
+
+        <!-- Results Section -->
+        <div id="results-container" class="hidden bg-slate-50 border border-slate-200 p-6 rounded-lg">
+            <h2 class="text-xl font-semibold text-slate-800 mb-4 text-center">Results</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+                    <div class="text-sm font-medium text-slate-500">Correlation (r)</div>
+                    <div id="result-r" class="text-2xl font-bold text-blue-600">--</div>
+                </div>
+                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+                    <div class="text-sm font-medium text-slate-500">R-Squared (r²)</div>
+                    <div id="result-r-sq" class="text-2xl font-bold text-blue-600">--</div>
+                </div>
+                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+                    <div class="text-sm font-medium text-slate-500">Slope (m)</div>
+                    <div id="result-slope" class="text-2xl font-bold text-slate-700">--</div>
+                </div>
+                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+                    <div class="text-sm font-medium text-slate-500">Y-Intercept (b)</div>
+                    <div id="result-intercept" class="text-2xl font-bold text-slate-700">--</div>
+                </div>
+            </div>
+            <p class="text-center text-sm text-slate-500 mt-4">
+                Regression Equation: <strong>y = <span id="eq-m"></span>x + <span id="eq-b"></span></strong>
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        // Get DOM elements
+        const xInput = document.getElementById('x-values');
+        const yInput = document.getElementById('y-values');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const messageBox = document.getElementById('message-box');
+        const resultsContainer = document.getElementById('results-container');
+        
+        // Result fields
+        const resultR = document.getElementById('result-r');
+        const resultRSq = document.getElementById('result-r-sq');
+        const resultSlope = document.getElementById('result-slope');
+        const resultIntercept = document.getElementById('result-intercept');
+        const eqM = document.getElementById('eq-m');
+        const eqB = document.getElementById('eq-b');
+
+        /**
+         * Parses a string of numbers into an array of floats.
+         * Splits by comma, space, or newline.
+         * @param {string} inputString - The raw string from the textarea.
+         * @returns {number[]} - An array of numbers.
+         */
+        function parseInput(inputString) {
+            return inputString
+                .trim()
+                .split(/[,\s\n]+/) // Split by comma, space, or newline
+                .filter(s => s.length > 0) // Remove empty strings
+                .map(s => parseFloat(s)) // Convert to numbers
+                .filter(n => !isNaN(n)); // Filter out any NaN values
+        }
+
+        /**
+         * Displays a message to the user.
+         * @param {string} message - The text to display.
+         * @param {boolean} isError - True for error (red), false for success (green).
+         */
+        function showMessage(message, isError = true) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            if (isError) {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            }
+        }
+
+        /**
+         * Hides the message box.
+         */
+        function hideMessage() {
+            messageBox.classList.add('hidden');
+        }
+
+        /**
+         * Hides the results container.
+         */
+        function hideResults() {
+            resultsContainer.classList.add('hidden');
+        }
+
+        /**
+         * Clears all inputs, messages, and results.
+         */
+        function clearAll() {
+            xInput.value = '';
+            yInput.value = '';
+            hideMessage();
+            hideResults();
+            
+            // Reset result text
+            resultR.textContent = '--';
+            resultRSq.textContent = '--';
+            resultSlope.textContent = '--';
+            resultIntercept.textContent = '--';
+            eqM.textContent = 'm';
+            eqB.textContent = 'b';
+        }
+
+        /**
+         * Main calculation logic.
+         */
+        function calculate() {
+            hideMessage();
+            hideResults();
+
+            const x = parseInput(xInput.value);
+            const y = parseInput(yInput.value);
+
+            // --- 1. Validation ---
+            if (x.length === 0 || y.length === 0) {
+                showMessage("Please enter values for both X and Y.");
+                return;
+            }
+
+            if (x.length !== y.length) {
+                showMessage(`Error: X has ${x.length} values, but Y has ${y.length}. They must be the same length.`);
+                return;
+            }
+
+            const n = x.length;
+            if (n < 2) {
+                showMessage("Error: At least 2 data points are required to calculate.");
+                return;
+            }
+
+            // --- 2. Calculate Sums ---
+            let sumX = 0;
+            let sumY = 0;
+            let sumXY = 0;
+            let sumX2 = 0;
+            let sumY2 = 0;
+
+            for (let i = 0; i < n; i++) {
+                sumX += x[i];
+                sumY += y[i];
+                sumXY += x[i] * y[i];
+                sumX2 += x[i] * x[i];
+                sumY2 += y[i] * y[i];
+            }
+
+            // --- 3. Calculate Core Components ---
+            const meanX = sumX / n;
+            const meanY = sumY / n;
+            
+            // Numerator for both slope (m) and correlation (r)
+            const numerator = (n * sumXY) - (sumX * sumY);
+            
+            // Denominator for slope (m)
+            const denomM = (n * sumX2) - (sumX * sumX);
+            
+            // Denominator for correlation (r)
+            const denomR = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)));
+
+            // --- 4. Handle Edge Cases (Division by Zero) ---
+            if (denomM === 0) {
+                showMessage("Cannot calculate: All X values are the same. This results in a vertical line.");
+                return;
+            }
+            if (denomR === 0) {
+                 showMessage("Cannot calculate correlation: All X or Y values are identical.");
+                 return;
+            }
+
+            // --- 5. Final Calculations ---
+            const m = numerator / denomM; // Slope
+            const b = meanY - (m * meanX); // Y-Intercept
+            const r = numerator / denomR; // Correlation Coefficient
+            const rSq = r * r; // R-Squared
+
+            // --- 6. Display Results ---
+            const precision = 4; // Number of decimal places
+            resultR.textContent = r.toFixed(precision);
+            resultRSq.textContent = rSq.toFixed(precision);
+            resultSlope.textContent = m.toFixed(precision);
+            resultIntercept.textContent = b.toFixed(precision);
+            
+            eqM.textContent = m.toFixed(2);
+            eqB.textContent = b.toFixed(2);
+
+            resultsContainer.classList.remove('hidden');
+        }
+
+        // --- Event Listeners ---
+        calculateBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+
+    </script>
+</body>
+</html>
