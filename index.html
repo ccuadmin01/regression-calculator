@@ -277,17 +277,15 @@
                 showMessage("Error: PDF library (jsPDF) not loaded. Please refresh.", true);
                 return;
             }
-            // Check if autoTable plugin is loaded
-            if (typeof window.jspdf.plugin.autoTable === 'undefined' && typeof window.autoTable !== 'function') {
-                 showMessage("Error: PDF Table library (autoTable) not loaded. Please refresh.", true);
-                 return;
-            }
-
+            
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Use autoTable function (it might be global or on the instance)
-            const autoTable = window.autoTable || doc.autoTable.bind(doc);
+            // Check if autoTable plugin is loaded
+            if (typeof doc.autoTable !== 'function') {
+                 showMessage("Error: PDF Table library (autoTable) not loaded. Please refresh.", true);
+                 return;
+            }
             
             // --- Get Data ---
             const x = parseInput(xInput.value);
@@ -311,7 +309,7 @@
             doc.setTextColor(0); // Black
             doc.text("Summary of Results", 14, 45);
             
-            autoTable(doc, {
+            doc.autoTable({
                 startY: 50,
                 head: [['Metric', 'Value']],
                 body: [
@@ -327,7 +325,7 @@
             });
 
             // --- 3. Raw Data Table ---
-            const firstTableEnd = doc.autoTable.previous.finalY;
+            const firstTableEnd = doc.lastAutoTable.finalY; // <-- FIX: Was doc.autoTable.previous.finalY
             
             doc.setFontSize(14);
             doc.text("Raw Data", 14, firstTableEnd + 15);
@@ -335,7 +333,7 @@
             // Prepare data for the table
             const tableData = x.map((val, index) => [val.toString(), y[index].toString()]);
 
-            autoTable(doc, {
+            doc.autoTable({
                 startY: firstTableEnd + 20,
                 head: [['X Value', 'Y Value']],
                 body: tableData,
