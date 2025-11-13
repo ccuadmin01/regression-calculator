@@ -1,252 +1,292 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linear Regression Calculator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PDF Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.umd.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        textarea::-webkit-scrollbar { width: 6px; }
-        textarea::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
-        textarea::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
-        textarea::-webkit-scrollbar-thumb:hover { background: #64748b; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linear Regression Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- ✅ Fixed: Reliable jsPDF + AutoTable from jsDelivr -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap");
+    body {
+      font-family: "Inter", sans-serif;
+    }
+    textarea::-webkit-scrollbar {
+      width: 6px;
+    }
+    textarea::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 10px;
+    }
+    textarea::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 10px;
+    }
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+  </style>
 </head>
+
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-2xl p-6 md:p-8 shadow-xl rounded-2xl">
+    <h1 class="text-2xl md:text-3xl font-bold text-center text-slate-800 mb-4">
+      Correlation & Regression Calculator
+    </h1>
+    <p class="text-center text-slate-600 mb-6">
+      Enter your X and Y values below, separated by commas, spaces, or new lines.
+    </p>
 
-    <div class="bg-white w-full max-w-2xl p-6 md:p-8 shadow-xl rounded-2xl">
-        <h1 class="text-2xl md:text-3xl font-bold text-center text-slate-800 mb-4">
-            Correlation & Regression Calculator
-        </h1>
-        <p class="text-center text-slate-600 mb-6">
-            Enter your X and Y values below, separated by commas, spaces, or new lines.
-        </p>
-
-        <!-- Input Section -->
-        <div class="flex flex-col md:flex-row gap-4 mb-6">
-            <div class="flex-1">
-                <label for="x-values" class="block text-sm font-medium text-slate-700 mb-2">X Values</label>
-                <textarea id="x-values" rows="8" class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 1, 2, 3, 4, 5"></textarea>
-            </div>
-            <div class="flex-1">
-                <label for="y-values" class="block text-sm font-medium text-slate-700 mb-2">Y Values</label>
-                <textarea id="y-values" rows="8" class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 2, 4.1, 5.9, 8, 10.2"></textarea>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 mb-6">
-            <button id="calculate-btn" class="flex-1 bg-blue-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition">Calculate</button>
-            <button id="clear-btn" class="flex-1 bg-slate-500 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-slate-600 transition">Clear</button>
-        </div>
-
-        <div id="message-box" class="hidden p-3 rounded-lg text-center font-medium mb-6"></div>
-
-        <!-- Results Section -->
-        <div id="results-container" class="hidden bg-slate-50 border border-slate-200 p-6 rounded-lg">
-            <h2 class="text-xl font-semibold text-slate-800 mb-4 text-center">Results</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
-                    <div class="text-sm font-medium text-slate-500">Correlation (r)</div>
-                    <div id="result-r" class="text-2xl font-bold text-blue-600">--</div>
-                </div>
-                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
-                    <div class="text-sm font-medium text-slate-500">R-Squared (r²)</div>
-                    <div id="result-r-sq" class="text-2xl font-bold text-blue-600">--</div>
-                </div>
-                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
-                    <div class="text-sm font-medium text-slate-500">Slope (m)</div>
-                    <div id="result-slope" class="text-2xl font-bold text-slate-700">--</div>
-                </div>
-                <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
-                    <div class="text-sm font-medium text-slate-500">Y-Intercept (b)</div>
-                    <div id="result-intercept" class="text-2xl font-bold text-slate-700">--</div>
-                </div>
-            </div>
-            <p class="text-center text-sm text-slate-500 mt-4">
-                Regression Equation: <strong>y = <span id="eq-m"></span>x <span id="eq-b"></span></strong>
-            </p>
-
-            <!-- Chart Canvas -->
-            <div class="mt-6">
-                <canvas id="regressionChart" height="250"></canvas>
-            </div>
-
-            <button id="download-btn" class="hidden w-full mt-6 bg-green-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition">
-                Download PDF Report
-            </button>
-        </div>
+    <!-- Input Fields -->
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+      <div class="flex-1">
+        <label for="x-values" class="block text-sm font-medium text-slate-700 mb-2">X Values</label>
+        <textarea id="x-values" rows="8"
+          class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          placeholder="e.g., 1, 2, 3, 4, 5"></textarea>
+      </div>
+      <div class="flex-1">
+        <label for="y-values" class="block text-sm font-medium text-slate-700 mb-2">Y Values</label>
+        <textarea id="y-values" rows="8"
+          class="w-full p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          placeholder="e.g., 2, 4.1, 5.9, 8, 10.2"></textarea>
+      </div>
     </div>
 
-    <script>
-        const xInput = document.getElementById('x-values');
-        const yInput = document.getElementById('y-values');
-        const calculateBtn = document.getElementById('calculate-btn');
-        const clearBtn = document.getElementById('clear-btn');
-        const messageBox = document.getElementById('message-box');
-        const resultsContainer = document.getElementById('results-container');
-        const downloadBtn = document.getElementById('download-btn');
-        const resultR = document.getElementById('result-r');
-        const resultRSq = document.getElementById('result-r-sq');
-        const resultSlope = document.getElementById('result-slope');
-        const resultIntercept = document.getElementById('result-intercept');
-        const eqM = document.getElementById('eq-m');
-        const eqB = document.getElementById('eq-b');
-        const chartCanvas = document.getElementById('regressionChart');
-        let regressionChart = null;
+    <!-- Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+      <button id="calculate-btn"
+        class="flex-1 bg-blue-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition">
+        Calculate
+      </button>
+      <button id="clear-btn"
+        class="flex-1 bg-slate-500 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-slate-600 transition">
+        Clear
+      </button>
+    </div>
 
-        function parseInput(inputString) {
-            return inputString.trim().split(/[,\s\n]+/).filter(s => s.length > 0).map(parseFloat).filter(n => !isNaN(n));
+    <div id="message-box" class="hidden p-3 rounded-lg text-center font-medium mb-6"></div>
+
+    <!-- Results -->
+    <div id="results-container" class="hidden bg-slate-50 border border-slate-200 p-6 rounded-lg">
+      <h2 class="text-xl font-semibold text-slate-800 mb-4 text-center">Results</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+          <div class="text-sm font-medium text-slate-500">Correlation (r)</div>
+          <div id="result-r" class="text-2xl font-bold text-blue-600">--</div>
+        </div>
+        <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+          <div class="text-sm font-medium text-slate-500">R-Squared (r²)</div>
+          <div id="result-r-sq" class="text-2xl font-bold text-blue-600">--</div>
+        </div>
+        <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+          <div class="text-sm font-medium text-slate-500">Slope (m)</div>
+          <div id="result-slope" class="text-2xl font-bold text-slate-700">--</div>
+        </div>
+        <div class="bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+          <div class="text-sm font-medium text-slate-500">Y-Intercept (b)</div>
+          <div id="result-intercept" class="text-2xl font-bold text-slate-700">--</div>
+        </div>
+      </div>
+
+      <p class="text-center text-sm text-slate-500 mt-4">
+        Regression Equation:
+        <strong>y = <span id="eq-m"></span>x <span id="eq-b"></span></strong>
+      </p>
+
+      <!-- Chart -->
+      <div class="mt-6">
+        <canvas id="regressionChart" height="250"></canvas>
+      </div>
+
+      <!-- PDF Download -->
+      <button id="download-btn"
+        class="hidden w-full mt-6 bg-green-600 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition">
+        Download PDF Report
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const xInput = document.getElementById("x-values");
+    const yInput = document.getElementById("y-values");
+    const calculateBtn = document.getElementById("calculate-btn");
+    const clearBtn = document.getElementById("clear-btn");
+    const messageBox = document.getElementById("message-box");
+    const resultsContainer = document.getElementById("results-container");
+    const downloadBtn = document.getElementById("download-btn");
+    const resultR = document.getElementById("result-r");
+    const resultRSq = document.getElementById("result-r-sq");
+    const resultSlope = document.getElementById("result-slope");
+    const resultIntercept = document.getElementById("result-intercept");
+    const eqM = document.getElementById("eq-m");
+    const eqB = document.getElementById("eq-b");
+    const chartCanvas = document.getElementById("regressionChart");
+    let regressionChart = null;
+
+    function parseInput(inputString) {
+      return inputString
+        .trim()
+        .split(/[,\s\n]+/)
+        .filter((s) => s.length > 0)
+        .map(parseFloat)
+        .filter((n) => !isNaN(n));
+    }
+
+    function showMessage(message, isError = true) {
+      messageBox.textContent = message;
+      messageBox.classList.remove("hidden", "bg-red-100", "text-red-700", "bg-green-100", "text-green-700");
+      messageBox.classList.add(isError ? "bg-red-100" : "bg-green-100", isError ? "text-red-700" : "text-green-700");
+    }
+
+    function hideMessage() { messageBox.classList.add("hidden"); }
+    function hideResults() { resultsContainer.classList.add("hidden"); downloadBtn.classList.add("hidden"); }
+
+    function clearAll() {
+      xInput.value = ""; yInput.value = "";
+      hideMessage(); hideResults();
+      if (regressionChart) { regressionChart.destroy(); regressionChart = null; }
+    }
+
+    function calculate() {
+      hideMessage(); hideResults();
+      const x = parseInput(xInput.value);
+      const y = parseInput(yInput.value);
+      if (x.length === 0 || y.length === 0) return showMessage("Please enter values for both X and Y.");
+      if (x.length !== y.length) return showMessage(`Error: X has ${x.length} values, Y has ${y.length}.`);
+      if (x.length < 2) return showMessage("At least 2 points required.");
+
+      const n = x.length;
+      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+      for (let i = 0; i < n; i++) { sumX += x[i]; sumY += y[i]; sumXY += x[i]*y[i]; sumX2 += x[i]*x[i]; sumY2 += y[i]*y[i]; }
+
+      const meanX = sumX/n, meanY = sumY/n;
+      const numerator = n*sumXY - sumX*sumY;
+      const denomM = n*sumX2 - sumX*sumX;
+      const denomR = Math.sqrt((n*sumX2 - sumX*sumX)*(n*sumY2 - sumY*sumY));
+      if (denomM === 0) return showMessage("All X values are the same.");
+      if (denomR === 0) return showMessage("Cannot calculate correlation.");
+
+      const m = numerator / denomM;
+      const b = meanY - m*meanX;
+      const r = numerator / denomR;
+      const rSq = r*r;
+
+      const precision = 4;
+      resultR.textContent = r.toFixed(precision);
+      resultRSq.textContent = rSq.toFixed(precision);
+      resultSlope.textContent = m.toFixed(precision);
+      resultIntercept.textContent = b.toFixed(precision);
+      eqM.textContent = m.toFixed(2);
+      eqB.textContent = (b >= 0 ? "+ " : "- ") + Math.abs(b).toFixed(2);
+
+      // Chart
+      if (regressionChart) regressionChart.destroy();
+      const minX = Math.min(...x), maxX = Math.max(...x);
+      const linePoints = [{ x: minX, y: m*minX + b }, { x: maxX, y: m*maxX + b }];
+
+      regressionChart = new Chart(chartCanvas, {
+        type: "scatter",
+        data: {
+          datasets: [
+            {
+              label: "Data Points",
+              data: x.map((val, i) => ({ x: val, y: y[i] })),
+              backgroundColor: "rgba(37, 99, 235, 0.8)"
+            },
+            {
+              label: "Regression Line",
+              data: linePoints,
+              type: "line",
+              borderColor: "rgba(16, 185, 129, 1)",
+              backgroundColor: "transparent",
+              borderWidth: 2,
+              tension: 0
+            }
+          ]
+        },
+        options: {
+          scales: { x: { title: { display: true, text: "X" } }, y: { title: { display: true, text: "Y" } } },
+          plugins: { legend: { position: "bottom" } }
         }
+      });
 
-        function showMessage(message, isError = true) {
-            messageBox.textContent = message;
-            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
-            messageBox.classList.add(isError ? 'bg-red-100' : 'bg-green-100', isError ? 'text-red-700' : 'text-green-700');
-        }
+      resultsContainer.classList.remove("hidden");
+      downloadBtn.classList.remove("hidden");
+    }
 
-        function hideMessage() { messageBox.classList.add('hidden'); }
-        function hideResults() { resultsContainer.classList.add('hidden'); downloadBtn.classList.add('hidden'); }
+    async function generatePDF() {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("jsPDF library not loaded.");
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        if (typeof doc.autoTable !== "function") throw new Error("AutoTable plugin not loaded.");
 
-        function clearAll() {
-            xInput.value = ''; yInput.value = '';
-            hideMessage(); hideResults();
-            if (regressionChart) { regressionChart.destroy(); regressionChart = null; }
-        }
+        const r = resultR.textContent, rSq = resultRSq.textContent;
+        const m = resultSlope.textContent, b = resultIntercept.textContent;
+        const eq = `y = ${eqM.textContent}x ${eqB.textContent}`;
+        const x = parseInput(xInput.value);
+        const y = parseInput(yInput.value);
 
-        function calculate() {
-            hideMessage(); hideResults();
-            const x = parseInput(xInput.value);
-            const y = parseInput(yInput.value);
-            if (x.length === 0 || y.length === 0) return showMessage("Please enter values for both X and Y.");
-            if (x.length !== y.length) return showMessage(`Error: X has ${x.length} values, Y has ${y.length}.`);
-            if (x.length < 2) return showMessage("At least 2 points required.");
+        doc.setFontSize(18);
+        doc.text("Linear Regression Analysis Report", 105, 20, { align: "center" });
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 28, { align: "center" });
 
-            const n = x.length;
-            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-            for (let i = 0; i < n; i++) { sumX += x[i]; sumY += y[i]; sumXY += x[i]*y[i]; sumX2 += x[i]*x[i]; sumY2 += y[i]*y[i]; }
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text("Summary of Results", 14, 45);
+        doc.autoTable({
+          startY: 50,
+          head: [["Metric", "Value"]],
+          body: [
+            ["Regression Equation", eq],
+            ["Correlation (r)", r],
+            ["R-Squared (r²)", rSq],
+            ["Slope (m)", m],
+            ["Y-Intercept (b)", b],
+            ["Data Points (n)", x.length.toString()]
+          ],
+          theme: "grid",
+          headStyles: { fillColor: [41, 128, 185] }
+        });
 
-            const meanX = sumX/n, meanY = sumY/n;
-            const numerator = n*sumXY - sumX*sumY;
-            const denomM = n*sumX2 - sumX*sumX;
-            const denomR = Math.sqrt((n*sumX2 - sumX*sumX)*(n*sumY2 - sumY*sumY));
-            if (denomM === 0) return showMessage("All X values are the same.");
-            if (denomR === 0) return showMessage("Cannot calculate correlation.");
+        // Chart
+        const chartImg = chartCanvas.toDataURL("image/png", 1.0);
+        const chartY = doc.lastAutoTable.finalY + 10;
+        doc.text("Regression Scatter Plot", 14, chartY + 10);
+        doc.addImage(chartImg, "PNG", 15, chartY + 15, 180, 90);
 
-            const m = numerator / denomM;
-            const b = meanY - m*meanX;
-            const r = numerator / denomR;
-            const rSq = r*r;
+        // Raw Data
+        const tableY = chartY + 110;
+        const tableData = x.map((val, i) => [val.toString(), y[i].toString()]);
+        doc.text("Raw Data", 14, tableY);
+        doc.autoTable({
+          startY: tableY + 5,
+          head: [["X Value", "Y Value"]],
+          body: tableData,
+          theme: "striped",
+          headStyles: { fillColor: [44, 62, 80] }
+        });
 
-            const precision = 4;
-            resultR.textContent = r.toFixed(precision);
-            resultRSq.textContent = rSq.toFixed(precision);
-            resultSlope.textContent = m.toFixed(precision);
-            resultIntercept.textContent = b.toFixed(precision);
-            eqM.textContent = m.toFixed(2);
-            eqB.textContent = (b >= 0 ? "+ " : "- ") + Math.abs(b).toFixed(2);
+        doc.save("regression-analysis-report.pdf");
+      } catch (err) {
+        console.error(err);
+        showMessage("⚠️ PDF generation failed: " + err.message, true);
+      }
+    }
 
-            // Chart
-            if (regressionChart) regressionChart.destroy();
-            const minX = Math.min(...x), maxX = Math.max(...x);
-            const linePoints = [
-                {x: minX, y: m*minX + b},
-                {x: maxX, y: m*maxX + b}
-            ];
-            regressionChart = new Chart(chartCanvas, {
-                type: 'scatter',
-                data: {
-                    datasets: [
-                        {
-                            label: 'Data Points',
-                            data: x.map((val, i) => ({x: val, y: y[i]})),
-                            backgroundColor: 'rgba(37, 99, 235, 0.8)'
-                        },
-                        {
-                            label: 'Regression Line',
-                            data: linePoints,
-                            type: 'line',
-                            borderColor: 'rgba(16, 185, 129, 1)',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            tension: 0
-                        }
-                    ]
-                },
-                options: {
-                    scales: { x: { title: { display: true, text: 'X' } }, y: { title: { display: true, text: 'Y' } } },
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-
-            resultsContainer.classList.remove('hidden');
-            downloadBtn.classList.remove('hidden');
-        }
-
-        async function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const r = resultR.textContent, rSq = resultRSq.textContent;
-            const m = resultSlope.textContent, b = resultIntercept.textContent;
-            const eq = `y = ${eqM.textContent}x ${eqB.textContent}`;
-            const x = parseInput(xInput.value);
-            const y = parseInput(yInput.value);
-
-            doc.setFontSize(18);
-            doc.text("Linear Regression Analysis Report", 105, 20, { align: 'center' });
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 28, { align: 'center' });
-
-            doc.setFontSize(14);
-            doc.setTextColor(0);
-            doc.text("Summary of Results", 14, 45);
-            doc.autoTable({
-                startY: 50,
-                head: [['Metric', 'Value']],
-                body: [
-                    ['Regression Equation', eq],
-                    ['Correlation (r)', r],
-                    ['R-Squared (r²)', rSq],
-                    ['Slope (m)', m],
-                    ['Y-Intercept (b)', b],
-                    ['Data Points (n)', x.length.toString()]
-                ],
-                theme: 'grid',
-                headStyles: { fillColor: [41, 128, 185] }
-            });
-
-            // Add Chart Image
-            const chartImg = chartCanvas.toDataURL('image/png', 1.0);
-            const chartY = doc.lastAutoTable.finalY + 10;
-            doc.text("Regression Scatter Plot", 14, chartY + 10);
-            doc.addImage(chartImg, 'PNG', 15, chartY + 15, 180, 90);
-
-            // Raw Data Table
-            const tableY = chartY + 110;
-            const tableData = x.map((val, i) => [val.toString(), y[i].toString()]);
-            doc.text("Raw Data", 14, tableY);
-            doc.autoTable({
-                startY: tableY + 5,
-                head: [['X Value', 'Y Value']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [44, 62, 80] }
-            });
-
-            doc.save("regression-analysis-report.pdf");
-        }
-
-        calculateBtn.addEventListener('click', calculate);
-        clearBtn.addEventListener('click', clearAll);
-        downloadBtn.addEventListener('click', generatePDF);
-    </script>
+    calculateBtn.addEventListener("click", calculate);
+    clearBtn.addEventListener("click", clearAll);
+    downloadBtn.addEventListener("click", generatePDF);
+  </script>
 </body>
 </html>
