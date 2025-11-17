@@ -1,304 +1,219 @@
---- FRONTEND ONLY: index.html ---
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Aflatoxin HPLC — Responsive + Validation QC (Frontend Only)</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aflatoxin Calculator (Vanilla JS)</title>
+  <style>
+    body { font-family: Arial; background:#f5f5f5; padding:20px; }
+    .card { background:#fff; padding:16px; border-radius:12px; margin-bottom:20px; box-shadow:0 2px 4px #0002; }
+    input { padding:6px; width:100%; }
+    table { border-collapse: collapse; width:100%; margin-top:10px; }
+    td,th { border:1px solid #444; padding:6px; text-align:center; }
+    .flex { display:flex; gap:8px; }
+    .btn { padding:6px 10px; background:#1976d2; color:white; border:none; cursor:pointer; }
+    .btn:hover { opacity:.8; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Aflatoxin HPLC — Mobile & Desktop (Frontend-only)</h1>
-      <div class="small muted">B1, B2, G1, G2 — same standard count enforced</div>
-    </header>
+<h1>Aflatoxin HPLC Calculator — Vanilla JavaScript</h1>
 
-    <div class="grid two-cols">
-      <section class="card">
-        <h2 class="small">Standards — same count for each toxin</h2>
-        <div class="row gap">
-          <label class="small muted">Standard points</label>
-          <select id="stdCount"></select>
-          <button id="applyStdCount" class="btn">Apply</button>
-        </div>
-        <div id="standardsContainer" class="stack" aria-live="polite"></div>
-        <p class="muted small">Enter concentration (µg/kg), HPLC peak area, and retention time (min).</p>
-      </section>
+<div id="app"></div>
 
-      <aside class="card">
-        <h2 class="small">Validation QC</h2>
-        <div id="linearityTable" class="stack"></div>
-        <div id="lodloq" class="stack"></div>
-        <p class="muted small">LOD = 3.3·sy/slope, LOQ = 10·sy/slope (per toxin).</p>
-      </aside>
-    </div>
+<script>
+// ---------------------------
+// CONSTANTS
+// ---------------------------
+const TOXINS = ["B1", "B2", "G1", "G2"];
 
-    <section class="card">
-      <h2 class="small">Samples & Peak Matching</h2>
-      <div class="row gap wrap">
-        <label class="small muted">RT tol (min)</label>
-        <input id="rtTol" style="width:92px" />
-        <label class="small muted">Dilution</label>
-        <input id="dilution" style="width:92px" />
-        <label class="small muted">Sample wt (g)</label>
-        <input id="sampleWeight" style="width:92px" />
-        <button id="addSample" class="btn">Add sample</button>
-      </div>
-      <div id="samplesContainer" class="stack" style="margin-top:12px"></div>
-    </section>
+// DATA MODEL
+let standards = {};
+TOXINS.forEach(t => standards[t] = [
+  { id: id(), conc: 0, area: "", rt: "" },
+  { id: id(), conc: 1, area: "", rt: "" },
+  { id: id(), conc: 5, area: "", rt: "" }
+]);
 
-    <div class="grid three-cols">
-      <div class="card">
-        <h3 class="small">Overlay Calibration Chart</h3>
-        <canvas id="overlayChart" height="220"></canvas>
-      </div>
+let samples = [ { id: id(), name: "Sample A", peaks: [] } ];
 
-      <div class="card">
-        <h3 class="small">Results</h3>
-        <div id="resultsTable"></div>
-      </div>
+let dilution = 1;
+let sampleWeight = 5;
+let rtTolerance = 0.2;
 
-      <div class="card">
-        <h3 class="small">Export</h3>
-        <div class="row gap">
-          <button id="openReport" class="btn">Open report (print/PDF)</button>
-          <button id="downloadReport" class="btn">Download PDF</button>
-        </div>
-      </div>
-    </div>
+function id(){ return Date.now() + Math.random(); }
 
-    <footer class="muted small">Validate outputs vs your SOP. This frontend app is offline-friendly and requires no backend.</footer>
-  </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
-
-
---- FRONTEND ONLY: styles.css ---
-:root{--bg:#f7fafc;--card:#fff;--accent:#0b74de;--muted:#6b7280}
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#0f172a}
-.container{max-width:1100px;margin:18px auto;padding:14px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-h1{font-size:1.25rem;margin:0}
-.grid{display:grid;gap:12px}
-.card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
-.row{display:flex;gap:8px;align-items:center}
-.stack{display:flex;flex-direction:column;gap:8px}
-.wrap{flex-wrap:wrap}
-input,select,button{padding:8px;border:1px solid #e6edf3;border-radius:8px}
-button{background:var(--accent);color:#fff;border:none}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #e6edf3;padding:6px;text-align:center;font-size:0.9rem}
-.muted{color:var(--muted)}
-.small{font-size:.9rem}
-.danger{background:#ef4444}
-.two-cols{grid-template-columns:1fr 360px}
-.three-cols{grid-template-columns:repeat(3,1fr)}
-@media(max-width:899px){.two-cols,.three-cols{grid-template-columns:1fr}.row{flex-direction:column;align-items:stretch}header{flex-direction:column;align-items:flex-start}}
-
-
---- FRONTEND ONLY: app.js ---
-// Frontend-only, cleaned and refactored JavaScript
-const TOXINS = ['B1','B2','G1','G2'];
-let stdCount = 3;
-const standards = {};
-let samples = [];
-let rtTolerance = 0.2, dilution = 1, sampleWeight = 5;
-
-function id(){ return Date.now() + Math.floor(Math.random()*1000); }
-
-function init(){
-  for(const t of TOXINS) standards[t] = [];
-  for(let i=0;i<stdCount;i++){
-    for(const t of TOXINS) standards[t].push({ id: id(), conc: i===0?0:(i===1?1:5), area:'', rt:'' });
-  }
-  samples = [{ id: id(), name:'Sample A', peaks:[] }];
-}
-init();
-
-// DOM refs
-const stdCountSelect = document.getElementById('stdCount');
-const standardsContainer = document.getElementById('standardsContainer');
-const samplesContainer = document.getElementById('samplesContainer');
-const overlayCanvas = document.getElementById('overlayChart');
-const resultsTableDiv = document.getElementById('resultsTable');
-const linearityDiv = document.getElementById('linearityTable');
-const lodloqDiv = document.getElementById('lodloq');
-const rtTolInput = document.getElementById('rtTol');
-const dilutionInput = document.getElementById('dilution');
-const sampleWeightInput = document.getElementById('sampleWeight');
-const addSampleBtn = document.getElementById('addSample');
-const openReportBtn = document.getElementById('openReport');
-const downloadReportBtn = document.getElementById('downloadReport');
-const applyStdBtn = document.getElementById('applyStdCount');
-
-// populate stdCount select
-for(let i=2;i<=8;i++){ const o = document.createElement('option'); o.value=i; o.textContent=i; stdCountSelect.appendChild(o); }
-stdCountSelect.value = stdCount;
-applyStdBtn.addEventListener('click', ()=>{ const n=Number(stdCountSelect.value)||3; setStandardCount(n); render(); });
-rtTolInput && (rtTolInput.value = rtTolerance);
-rtTolInput && rtTolInput.addEventListener('change', ()=>{ rtTolerance = Number(rtTolInput.value)||0.2; renderResults(); });
-if(dilutionInput){ dilutionInput.value = dilution; dilutionInput.addEventListener('change', ()=>{ dilution = Number(dilutionInput.value)||1; renderResults(); }); }
-if(sampleWeightInput){ sampleWeightInput.value = sampleWeight; sampleWeightInput.addEventListener('change', ()=>{ sampleWeight = Number(sampleWeightInput.value)||1; renderResults(); }); }
-addSampleBtn && addSampleBtn.addEventListener('click', ()=>{ samples.push({ id:id(), name:'New sample', peaks:[] }); render(); });
-openReportBtn && openReportBtn.addEventListener('click', openPrintableReport);
-downloadReportBtn && downloadReportBtn.addEventListener('click', ()=>{ generatePDFReport(); });
-
-// math: linear regression (least squares)
+// ---------------------------
+// CORE MATH FUNCTIONS
+// ---------------------------
 function linearRegression(points){
-  if(!points || points.length<2) return null;
-  const n = points.length;
-  const sumX = points.reduce((a,b)=>a+b.x,0);
-  const sumY = points.reduce((a,b)=>a+b.y,0);
-  const sumXY = points.reduce((a,b)=>a+b.x*b.y,0);
-  const sumX2 = points.reduce((a,b)=>a+b.x*b.x,0);
-  const denom = n*sumX2 - sumX*sumX; if(Math.abs(denom)<1e-12) return null;
-  const slope = (n*sumXY - sumX*sumY)/denom;
-  const intercept = (sumY - slope*sumX)/n;
-  const ssRes = points.reduce((a,b)=>a+Math.pow(b.y - (slope*b.x + intercept),2),0);
-  const sy = Math.sqrt(ssRes/(n-2));
-  const meanY = sumY/n; const ssTot = points.reduce((a,b)=>a+Math.pow(b.y-meanY,2),0);
-  const r2 = ssTot===0?1:1 - ssRes/ssTot;
-  return { slope, intercept, sy, r2 };
+  if(points.length < 2) return null;
+  let n = points.length;
+  let sumX = points.reduce((a,b)=>a+b.x,0);
+  let sumY = points.reduce((a,b)=>a+b.y,0);
+  let sumXY = points.reduce((a,b)=>a+b.x*b.y,0);
+  let sumX2 = points.reduce((a,b)=>a+b.x*b.x,0);
+  let denom = n*sumX2 - sumX*sumX;
+  if(Math.abs(denom)<1e-12) return null;
+  let slope = (n*sumXY - sumX*sumY) / denom;
+  let intercept = (sumY - slope*sumX) / n;
+  return { slope, intercept };
 }
 
 function computeCalibrations(){
-  const out = {};
-  for(const t of TOXINS){
-    const pts = standards[t].map(s=>({ x: Number(s.area)||0, y: Number(s.conc)||0 })).filter(p=>p.x>0);
+  let out={};
+  TOXINS.forEach(t=>{
+    let pts = standards[t]
+      .map(p=>({ x: parseFloat(p.area)||0, y: parseFloat(p.conc)||0 }))
+      .filter(p=>p.x>0);
     out[t] = linearRegression(pts);
-  }
+  });
   return out;
 }
 
-function predict(toxin, area, cal){ if(!cal || !cal[toxin]) return 0; return cal[toxin].slope * Number(area||0) + cal[toxin].intercept; }
+function predict(toxin, area, calibrations){
+  let c = calibrations[toxin];
+  if(!c) return 0;
+  let x = parseFloat(area)||0;
+  return c.slope * x + c.intercept;
+}
 
 function matchPeaks(peaks){
-  const refRT = {};
-  for(const t of TOXINS){
-    const rts = standards[t].map(s=>Number(s.rt)||NaN).filter(v=>!isNaN(v));
-    if(rts.length) refRT[t] = rts.reduce((a,b)=>a+b,0)/rts.length;
-  }
+  let refRT={};
+  TOXINS.forEach(t=>{
+    let rts = standards[t]
+      .map(s=>parseFloat(s.rt)||NaN)
+      .filter(v=>!isNaN(v));
+    if(rts.length) refRT[t] = rts.reduce((a,b)=>a+b)/rts.length;
+  });
+
   return peaks.map(p=>{
-    const rt = Number(p.rt); if(isNaN(rt)) return { ...p, matched:null };
-    let best=null, bestDiff=Infinity;
-    for(const t in refRT){ const d = Math.abs(refRT[t]-rt); if(d<=rtTolerance && d<bestDiff){ best=t; bestDiff=d; }}
-    return { ...p, matched:best, rtDiff: bestDiff===Infinity? null: bestDiff };
+    let rt = parseFloat(p.rt);
+    if(isNaN(rt)) return { ...p, matched:null };
+    let best=null, diff=999;
+    for(const t in refRT){
+      let d = Math.abs(refRT[t]-rt);
+      if(d <= rtTolerance && d < diff){ best=t; diff=d; }
+    }
+    return { ...p, matched:best };
   });
 }
 
-function computeSampleResults(sample, cal){
-  const matched = matchPeaks(sample.peaks);
-  const per = {}; TOXINS.forEach(t=>per[t]=0);
-  for(const p of matched){ if(p.matched){ per[p.matched] += predict(p.matched, p.area, cal); }}
-  const total = TOXINS.reduce((a,t)=>a+per[t],0);
-  const corrected = (total * dilution) / sampleWeight;
-  return { per, total, corrected, matched };
-}
-
-function computeQC(){
-  const cal = computeCalibrations();
-  const linearity = {}, lodloq = {};
-  for(const t of TOXINS){
-    const pts = standards[t].map(s=>({ x: Number(s.area)||0, y: Number(s.conc)||0 })).filter(p=>p.x>0);
-    const c = cal[t];
-    linearity[t] = pts.map(p=>{ const pred = c ? c.slope*p.x + c.intercept : 0; return { area:p.x, actual:p.y, predicted:pred, residual: p.y - pred }; });
-    if(c && c.slope && c.sy){ const LOD = 3.3 * c.sy / Math.abs(c.slope); const LOQ = 10 * c.sy / Math.abs(c.slope); lodloq[t] = { LOD, LOQ, slope:c.slope, intercept:c.intercept, r2:c.r2 }; } else lodloq[t]=null;
-  }
-  return { linearity, lodloq };
-}
-
-// RENDER
-function setStandardCount(n){ stdCount = n; for(const t of TOXINS){ const arr = standards[t]; while(arr.length < n) arr.push({ id:id(), conc:'', area:'', rt:'' }); while(arr.length>n) arr.pop(); } }
-
-function renderStandards(){
-  standardsContainer.innerHTML='';
-  for(const t of TOXINS){
-    const card = document.createElement('div'); card.className='card';
-    const h = document.createElement('h3'); h.textContent='Aflatoxin '+t; h.className='small'; card.appendChild(h);
-    const grid = document.createElement('div'); grid.className='stack';
-    standards[t].forEach((pt,idx)=>{
-      const row = document.createElement('div'); row.className='row';
-      const conc = inputField(pt.conc, v=>{ pt.conc=v; renderResults(); });
-      const area = inputField(pt.area, v=>{ pt.area=v; renderResults(); });
-      const rt = inputField(pt.rt, v=>{ pt.rt=v; renderResults(); });
-      const del = document.createElement('button'); del.textContent='×'; del.className='btn danger'; del.onclick = ()=>{ standards[t].splice(idx,1); setStandardCount(stdCount); render(); };
-      row.appendChild(conc); row.appendChild(area); row.appendChild(rt); row.appendChild(del);
-      grid.appendChild(row);
-    });
-    const add = document.createElement('button'); add.className='btn'; add.textContent='Add point'; add.onclick=()=>{ standards[t].push({ id:id(), conc:'', area:'', rt:'' }); setStandardCount(stdCount); render(); };
-    card.appendChild(grid); card.appendChild(add);
-    standardsContainer.appendChild(card);
-  }
-}
-
-function inputField(value,onchange){ const inp=document.createElement('input'); inp.value=value; inp.onchange=e=>onchange(e.target.value); return inp; }
-
-function renderSamples(){ samplesContainer.innerHTML=''; samples.forEach((s,si)=>{
-  const card=document.createElement('div'); card.className='card';
-  const name=inputField(s.name,v=>{ s.name=v; renderResults(); });
-  const peaksDiv=document.createElement('div'); peaksDiv.className='stack';
-  s.peaks.forEach((p,pi)=>{
-    const row=document.createElement('div'); row.className='row';
-    const rt=inputField(p.rt,v=>{ p.rt=v; renderResults(); });
-    const area=inputField(p.area,v=>{ p.area=v; renderResults(); });
-    const del=document.createElement('button'); del.className='btn danger'; del.textContent='×'; del.onclick=()=>{ s.peaks.splice(pi,1); render(); };
-    row.appendChild(rt); row.appendChild(area); row.appendChild(del); peaksDiv.appendChild(row);
+function computeSample(s, calibrations){
+  let m = matchPeaks(s.peaks);
+  let perToxin={}; TOXINS.forEach(t=>perToxin[t]=0);
+  m.forEach(p=>{
+    if(p.matched){ perToxin[p.matched] += predict(p.matched, p.area, calibrations); }
   });
-  const addPeak=document.createElement('button'); addPeak.className='btn'; addPeak.textContent='Add peak'; addPeak.onclick=()=>{ s.peaks.push({ id:id(), rt:'', area:'' }); render(); };
-  card.appendChild(name); card.appendChild(peaksDiv); card.appendChild(addPeak); samplesContainer.appendChild(card);
-}); }
-
-function renderOverlayChart(){ const cal = computeCalibrations(); const areas=new Set(); for(const t of TOXINS) standards[t].forEach(s=>{ const a=Number(s.area); if(a>0) areas.add(a); }); const xs=Array.from(areas).sort((a,b)=>a-b); const rows = xs.map(a=>{ const row={area:a}; for(const t of TOXINS){ const c=cal[t]; row[t]=c? c.slope*a + c.intercept : null;} return row; }); const ctx=overlayCanvas.getContext('2d'); overlayCanvas.width = overlayCanvas.clientWidth; overlayCanvas.height = 240; ctx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height); if(rows.length===0){ ctx.fillStyle='#666'; ctx.fillText('No calibration points',10,20); return; } const minX=Math.min(...rows.map(r=>r.area)); const maxX=Math.max(...rows.map(r=>r.area)); const vals=rows.flatMap(r=>TOXINS.map(t=>r[t]).filter(v=>v!=null)); const minY=Math.min(...vals); const maxY=Math.max(...vals); const pad=28; const tx=x=> pad + (overlayCanvas.width-2*pad) * ((x-minX)/(maxX-minX||1)); const ty=y=> overlayCanvas.height - pad - (overlayCanvas.height-2*pad) * ((y-minY)/(maxY-minY||1)); const colors=['#003f5c','#58508d','#bc5090','#ff6361']; ctx.strokeStyle='#ddd'; ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,overlayCanvas.height-pad); ctx.lineTo(overlayCanvas.width-pad,overlayCanvas.height-pad); ctx.stroke(); TOXINS.forEach((t,i)=>{ ctx.beginPath(); ctx.strokeStyle = colors[i]; let started=false; rows.forEach(r=>{ if(r[t]!=null){ const x=tx(r.area); const y=ty(r[t]); if(!started){ ctx.moveTo(x,y); started=true; } else ctx.lineTo(x,y); }}); ctx.stroke(); }); }
-
-function renderResults(){ const cal = computeCalibrations(); let html = '<table><thead><tr><th>Sample</th>' + TOXINS.map(t=>`<th>${t}</th>`).join('') + '<th>Total</th><th>Corrected</th></tr></thead><tbody>'; for(const s of samples){ const r=computeSampleResults(s,cal); html += `<tr><td>${escapeHtml(s.name)}</td>` + TOXINS.map(t=>`<td>${r.per[t].toFixed(3)}</td>`).join('') + `<td>${r.total.toFixed(3)}</td><td>${r.corrected.toFixed(3)}</td></tr>`; } html += '</tbody></table>'; resultsTableDiv.innerHTML = html; const qc = computeQC(); let linHtml=''; for(const t of TOXINS){ linHtml += `<h4 class="small">${t} (R²=${qc.lodloq[t]? qc.lodloq[t].r2.toFixed(4): '—'})</h4>`; linHtml += '<table><thead><tr><th>Area</th><th>Actual</th><th>Predicted</th><th>Residual</th></tr></thead><tbody>'; for(const r of qc.linearity[t]||[]) linHtml += `<tr><td>${r.area}</td><td>${r.actual}</td><td>${r.predicted.toFixed(4)}</td><td>${r.residual.toFixed(4)}</td></tr>`; linHtml += '</tbody></table>'; } linearityDiv.innerHTML = linHtml; let loHtml = '<table><thead><tr><th>Toxin</th><th>Slope</th><th>Sy</th><th>LOD</th><th>LOQ</th></tr></thead><tbody>'; const calAll = computeCalibrations(); for(const t of TOXINS){ const info = qc.lodloq[t]; if(info) loHtml += `<tr><td>${t}</td><td>${info.slope.toFixed(6)}</td><td>${(calAll[t].sy||0).toFixed(6)}</td><td>${info.LOD.toFixed(6)}</td><td>${info.LOQ.toFixed(6)}</td></tr>`; else loHtml += `<tr><td>${t}</td><td colspan="4">Insufficient data</td></tr>`; } loHtml += '</tbody></table>'; lodloqDiv.innerHTML = loHtml; renderOverlayChart(); }
-
-function render(){ renderStandards(); renderSamples(); renderResults(); }
-function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function openPrintableReport(){ const cal=computeCalibrations(); const qc=computeQC(); const rows = samples.map(s=>{ const r=computeSampleResults(s,cal); return `<tr><td>${escapeHtml(s.name)}</td>${TOXINS.map(t=>`<td>${r.per[t].toFixed(3)}</td>`).join('')}<td>${r.total.toFixed(3)}</td><td>${r.corrected.toFixed(3)}</td></tr>`; }).join(''); const html = `<!doctype html><html><head><meta charset="utf-8"><title>Report</title><style>body{font-family:Arial;padding:18px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #333;padding:6px;text-align:center}h1,h2{margin:.25rem 0}</style></head><body><h1>Aflatoxin HPLC Report</h1><p>Dilution: ${dilution} — Sample weight: ${sampleWeight} g — RT tol: ${rtTolerance} min</p><h2>Results</h2><table><thead><tr><th>Sample</th>${TOXINS.map(t=>`<th>${t}</th>`).join('')}<th>Total</th><th>Corrected</th></tr></thead><tbody>${rows}</tbody></table><h2>Linearity</h2>${Object.keys(qc.linearity).map(t=>`<h3>${t}</h3><table><thead><tr><th>Area</th><th>Actual</th><th>Pred</th><th>Res</th></tr></thead><tbody>${(qc.linearity[t]||[]).map(r=>`<tr><td>${r.area}</td><td>${r.actual}</td><td>${r.predicted.toFixed(4)}</td><td>${r.residual.toFixed(4)}</td></tr>`).join('')}</tbody></table>`).join('')}<h2>LOD / LOQ</h2><pre>${JSON.stringify(qc.lodloq,null,2)}</pre></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); }
-
-// PDF generation (client-side) using simple approach: print to PDF or use blob + window.print.
-function generatePDFReport(){
-  // open printable HTML and call print — user can choose save as PDF.
-  openPrintableReport();
+  let total = TOXINS.reduce((a,t)=>a+perToxin[t],0);
+  let corrected = (total * dilution) / sampleWeight;
+  return { perToxin, total, corrected };
 }
 
-// helpers used by renderStandards/renderSamples
-function inputField(value,onchange){ const inp=document.createElement('input'); inp.value=value; inp.onchange=e=>onchange(e.target.value); return inp; }
+// ---------------------------
+// RENDER UI
+// ---------------------------
+function render(){
+  const root = document.getElementById("app");
+  root.innerHTML = `
+    <div class="card">
+      <h2>Standards (B1/B2/G1/G2)</h2>
+      ${TOXINS.map(t=>`
+        <div class="card">
+          <h3>${t}</h3>
+          ${standards[t].map(row=>`
+            <div class="flex">
+              <input value="${row.conc}" onchange="updateStandard('${t}',${row.id},'conc',this.value)" placeholder="conc" />
+              <input value="${row.area}" onchange="updateStandard('${t}',${row.id},'area',this.value)" placeholder="area" />
+              <input value="${row.rt}" onchange="updateStandard('${t}',${row.id},'rt',this.value)" placeholder="RT" />
+              <button class="btn" onclick="removeStd('${t}',${row.id})">×</button>
+            </div>
+          `).join('')}
+          <button class="btn" onclick="addStd('${t}')">Add</button>
+        </div>
+      `).join('')}
+    </div>
 
-function setStandardCount(n){ stdCount=n; for(const t of TOXINS){ const arr=standards[t]; while(arr.length<n) arr.push({ id:id(), conc:'', area:'', rt:'' }); while(arr.length>n) arr.pop(); } }
+    <div class="card">
+      <h2>Samples & Peaks</h2>
+      ${samples.map(s=>`
+        <div class="card">
+          <input value="${s.name}" onchange="renameSample(${s.id},this.value)" />
+          ${s.peaks.map(p=>`
+            <div class="flex">
+              <input value="${p.rt}" onchange="updatePeak(${s.id},${p.id},'rt',this.value)" placeholder="RT" />
+              <input value="${p.area}" onchange="updatePeak(${s.id},${p.id},'area',this.value)" placeholder="Area" />
+              <button class="btn" onclick="delPeak(${s.id},${p.id})">×</button>
+            </div>
+          `).join('')}
+          <button class="btn" onclick="addPeak(${s.id})">Add Peak</button>
+        </div>
+      `).join('')}
+      <button class="btn" onclick="addSample()">Add Sample</button>
+    </div>
 
-// initial render
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="flex">
+        <input value="${dilution}" onchange="dilution=this.value; render()" placeholder="Dilution" />
+        <input value="${sampleWeight}" onchange="sampleWeight=this.value; render()" placeholder="Sample weight" />
+        <input value="${rtTolerance}" onchange="rtTolerance=this.value; render()" placeholder="RT tolerance" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Results</h2>
+      ${renderResults()}
+    </div>
+  `;
+}
+
+// ---------------------------
+// UPDATE FUNCTIONS
+// ---------------------------
+function updateStandard(t,id,field,val){ standards[t] = standards[t].map(r=>r.id===id?{...r,[field]:val}:r); render(); }
+function addStd(t){ standards[t].push({id:id(),conc:"",area:"",rt:""}); render(); }
+function removeStd(t,id){ standards[t]=standards[t].filter(r=>r.id!==id); render(); }
+
+function addSample(){ samples.push({id:id(),name:"New Sample",peaks:[]}); render(); }
+function renameSample(id,val){ samples = samples.map(s=>s.id===id?{...s,name:val}:s); render(); }
+function addPeak(sampleId){ samples = samples.map(s=>s.id===sampleId?{...s,peaks:[...s.peaks,{id:id(),rt:"",area:""}]}:s); render(); }
+function updatePeak(sampleId,peakId,field,val){ samples = samples.map(s=>{
+  if(s.id!==sampleId) return s;
+  return {...s,peaks:s.peaks.map(p=>p.id===peakId?{...p,[field]:val}:p)};
+}); render(); }
+function delPeak(sampleId,peakId){ samples=samples.map(s=>s.id===sampleId?{...s,peaks:s.peaks.filter(p=>p.id!==peakId)}:s); render(); }
+
+// ---------------------------
+// RESULTS TABLE
+// ---------------------------
+function renderResults(){
+  let cal = computeCalibrations();
+  let rows = samples.map(s=>{
+    let r = computeSample(s,cal);
+    return `
+      <tr>
+        <td>${s.name}</td>
+        ${TOXINS.map(t=>`<td>${r.perToxin[t].toFixed(3)}</td>`).join('')}
+        <td>${r.total.toFixed(3)}</td>
+        <td>${r.corrected.toFixed(3)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <table>
+      <thead>
+        <tr><th>Sample</th>${TOXINS.map(t=>`<th>${t}</th>`).join('')}<th>Total</th><th>Corrected</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ---------------------------
+// START
+// ---------------------------
 render();
-
---- README.md ---
-# Aflatoxin HPLC Calculator — Frontend Only
-
-This is a frontend-only, mobile-responsive vanilla JavaScript application for quantifying aflatoxins B1, B2, G1, and G2 from HPLC peak areas.
-
-## Features
-- Independent linear calibration per toxin (least-squares)
-- Enforced identical number of standard points across toxins
-- Peak matching by retention time (mean RT of standards)
-- Automated QC: linearity table, residuals, R², LOD/LOQ per toxin
-- Mobile responsive UI, printable report (open and print/save as PDF)
-
-## Files
-- `index.html` — main UI
-- `styles.css` — styling
-- `app.js` — application logic
-- `README.md` — this file
-
-## Use
-Open `index.html` in any browser (no build step required). The app runs entirely client-side.
-
-## Notes
-- LOD/LOQ are computed using residual standard deviation (sy) and slope: LOD = 3.3·sy/slope, LOQ = 10·sy/slope.
-- For spike-recovery module or CSV import/export, tell me and I'll add it.
-
-
---- END OF DOCUMENT ---
+</script>
+</body>
+</html>
